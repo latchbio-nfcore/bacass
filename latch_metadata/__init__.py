@@ -1,23 +1,20 @@
-
-from latch.types.metadata import (
-    NextflowMetadata,
-    LatchAuthor,
-    NextflowRuntimeResources
-)
 from latch.types.directory import LatchDir
+from latch.types.metadata import LatchAuthor, NextflowMetadata, NextflowRuntimeResources
 
-from .parameters import generated_parameters
+from .parameters import flow, generated_parameters
 
 NextflowMetadata(
-    display_name='nf-core/bacass',
+    display_name="nf-core/bacass",
     author=LatchAuthor(
-        name="Your Name",
+        name="nf-core",
     ),
+    repository="https://github.com/latchbio-nfcore/bacass",
     parameters=generated_parameters,
     runtime_resources=NextflowRuntimeResources(
         cpus=4,
         memory=8,
         storage_gib=100,
     ),
+    flow=flow,
     log_dir=LatchDir("latch:///your_log_dir"),
 )
