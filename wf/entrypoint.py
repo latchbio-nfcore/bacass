@@ -27,6 +27,8 @@ from wf.enums import (
     PolishMethod,
 )
 
+sys.stdout.reconfigure(line_buffering=True)
+
 meta = Path("latch_metadata") / "__init__.py"
 import_module_by_path(meta)
 import latch_metadata
@@ -34,10 +36,12 @@ import latch_metadata
 
 @dataclass(frozen=True)
 class SampleSheet:
-    sampleid: str
-    forwardreads: LatchFile
-    reversereads: Optional[LatchFile]
-    run: Optional[str]
+    ID: str
+    R1: LatchFile
+    R2: LatchFile
+    LongFastQ: Optional[LatchFile]
+    Fast5: Optional[LatchDir]
+    GenomeSize: Optional[str]
 
 
 @custom_task(cpu=0.25, memory=0.5, storage_gib=1)
@@ -68,33 +72,23 @@ def initialize(run_name: str) -> str:
 def custom_samplesheet_constructor(
     samples: List[SampleSheet], shared_dir: Path
 ) -> Path:
-    samplesheet = Path(shared_dir / "samplesheet.csv")
-    columns = ["sampleID", "forwardReads", "reverseReads", "run"]
+    samplesheet = Path(shared_dir / "samplesheet.tsv")
+    columns = ["ID", "R1", "R2", "LongFastQ", "Fast5", "GenomeSize"]
 
     with open(samplesheet, "w") as f:
-        writer = csv.DictWriter(f, columns, delimiter=",")
+        writer = csv.DictWriter(f, columns, delimiter="\t")
         writer.writeheader()
 
         for sample in samples:
-            forward_reads_local_path = Path(sample.forwardreads.local_path)
-            forward_reads_shared_path = shared_dir / forward_reads_local_path.name
-            shutil.move(str(forward_reads_local_path), str(forward_reads_shared_path))
-
-            reverse_reads_shared_path = ""
-            if sample.reversereads:
-                reverse_reads_local_path = Path(sample.reversereads.local_path)
-                reverse_reads_shared_path = shared_dir / reverse_reads_local_path.name
-                shutil.move(
-                    str(reverse_reads_local_path), str(reverse_reads_shared_path)
-                )
-
             row_data = {
-                "sampleID": sample.sampleid,
-                "forwardReads": str(forward_reads_shared_path),
-                "reverseReads": str(reverse_reads_shared_path)
-                if reverse_reads_shared_path
-                else "",
-                "run": sample.run if sample.run else "",
+                "ID": sample.ID,
+                "R1": str(sample.R1.remote_path),
+                "R2": str(sample.R2.remote_path),
+                "LongFastQ": str(sample.LongFastQ.remote_path)
+                if sample.LongFastQ
+                else "NA",
+                "Fast5": str(sample.Fast5.remote_path) if sample.Fast5 else "NA",
+                "GenomeSize": str(sample.GenomeSize) if sample.GenomeSize else "NA",
             }
             writer.writerow(row_data)
 
@@ -105,7 +99,7 @@ def custom_samplesheet_constructor(
 def nextflow_runtime(
     pvc_name: str,
     run_name: str,
-    input: str,
+    input: List[SampleSheet],
     outdir: LatchOutputDir,
     email: Optional[str],
     fastp_args: Optional[str],
@@ -120,7 +114,7 @@ def nextflow_runtime(
     reference_gff: Optional[LatchFile],
     ncbi_assembly_metadata: Optional[LatchFile],
     unicycler_args: Optional[str],
-    canu_mode: Optional[str],
+    canu_mode: Optional[CanuMode],
     canu_args: Optional[str],
     dragonflye_args: Optional[str],
     prokka_args: Optional[str],
@@ -134,11 +128,11 @@ def nextflow_runtime(
     skip_multiqc: bool,
     multiqc_title: Optional[str],
     multiqc_methods_description: Optional[str],
-    assembler: Optional[str],
-    assembly_type: Optional[str],
-    polish_method: Optional[str],
-    annotation_tool: Optional[str],
-    baktadb_download_args: Optional[str],
+    assembler: Assembler,
+    assembly_type: AssemblyType,
+    polish_method: PolishMethod,
+    annotation_tool: AnnotationTool,
+    baktadb_download_args: Optional[BaktaDbDownloadArgs],
     dfast_config: Optional[str],
 ) -> None:
     shared_dir = Path("/nf-workdir")

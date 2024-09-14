@@ -6,9 +6,9 @@ from .parameters import flow, generated_parameters
 NextflowMetadata(
     display_name="nf-core/bacass",
     author=LatchAuthor(
-        name="Your Name",
+        name="nf-core",
     ),
-    repository="https://github.com/latchbio-nfcore/scrnaseq",
+    repository="https://github.com/latchbio-nfcore/bacass",
     parameters=generated_parameters,
     runtime_resources=NextflowRuntimeResources(
         cpus=4,

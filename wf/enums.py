@@ -18,7 +18,6 @@ class CanuMode(Enum):
     pacbio = "pacbio"
     nanopore = "nanopore"
     pacbio_hifi = "pacbio-hifi"
-    null = "null"
 
 
 class PolishMethod(Enum):
